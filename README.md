@@ -1,4 +1,4 @@
-# Sample for the template]{Estimating population size with repeated observations of non-invasive sampling in presence of misidentification
+# Estimating population size with repeated observations of non-invasive sampling in presence of misidentification
 
 This repository contains all the material needed to reproduce the results from the paper.
 The instructions are given below.
