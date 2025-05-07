@@ -27,6 +27,12 @@ for(year in c("06", "07", "08", "10", "11", "12")){
   dta_observed[which(dta_observed > 0)] <- 1
   summaryDta <- getSummaryCMR(dta_observed)
   
+  if(!any(summaryDta$index == 1)) {
+    summaryDta <- rbind(c(deparse(rep(0,S)), 1, 0), summaryDta)
+    summaryDta$Freq <- as.numeric(summaryDta$Freq)
+    summaryDta$index <- as.numeric(summaryDta$index)
+  }
+  
   # MATRIX OF ORDERED OBSERVED HISTORIES
   observation <- as.data.frame(t(sapply(summaryDta$history, 
                                         function(h) eval(parse(text=h)))))
@@ -47,45 +53,22 @@ for(year in c("06", "07", "08", "10", "11", "12")){
   xInit <- numeric(n+M)
   xInit[1:n] <- summaryDta$Freq
   
-  # MATRIX A (just to check if xInit if valid)
-  A <- getA(latentObservation, observation)
-  
-  # INITIAL X TO START MCMC
-  set.seed(1248)
-  xInit2 <- xInit
-  latObs2 <- latentObservation
-  latIdx2 <- latentIndex
-  for(j in 1:40){
-    tmp <- addError(xInit2, latObs2, latIdx2, S, n, M, n+M)
-    xInit2 <- tmp$x
-    latObs2 <- tmp$latObs
-    latIdx2 <- tmp$latIdx
-    
-    A2 <- getA(latObs2, observation)
-    if(!(all(xInit2 >= 0) & all(summaryDta$Freq[-1] == A2 %*% xInit2)))
-      print(j)
-  }
-  cat(all(summaryDta$Freq[-1] == A %*% xInit), "  ")
-  A2 <- getA(latObs2, observation)
-  cat(all(xInit2 >= 0) & all(summaryDta$Freq[-1] == A2 %*% xInit2), "  ")
-  print(sum(xInit-xInit2))
-  
   # ------- Constructing nimble model ------ ----
   
   
   LMMPtConsts <- list(S = S, nbLatentObs=n+M)
   
   # Initialisation
-  LMMPtInits <- function(i) list(capture = rep(0.5, S),
-                                 alpha = 1, 
-                                 N = c(sum(xInit),sum(xInit2))[[i]],
-                                 x = list(xInit, xInit2)[[i]],
-                                 latentObservation = list(latentObservation, latObs2)[[i]],
-                                 latentIndex = list(latentIndex, latIdx2)[[i]])
+  LMMPtInits <- function() list(capture = rep(runif(1, 0.1, 0.9), S),
+                                alpha = 1, 
+                                N = sum(xInit),
+                                x = xInit,
+                                latentObservation = latentObservation,
+                                latentIndex = latentIndex)
   
   LMMPtModel <- nimbleModel(code = LMMPtCode, name = "Pt", 
                             constants = LMMPtConsts,
-                            data = list(), inits = LMMPtInits(1))
+                            data = list(), inits = LMMPtInits())
   
   CLMMPt <- compileNimble(LMMPtModel, 
                           showCompilerOutput = FALSE)
@@ -113,16 +96,16 @@ for(year in c("06", "07", "08", "10", "11", "12")){
                               showCompilerOutput = F)
   
   # ------- run MCMC ------ ----
-  
-  inits <- list(LMMPtInits(1), LMMPtInits(1))
+  set.seed(1234)
+  inits <- list(LMMPtInits(), LMMPtInits(), LMMPtInits())
   
   burnin <- 1000
-  nthin <- 10
+  nthin <- 1
   niter <- 10000+burnin
   
   system.time(
     samples <- runMCMC(CLMMPtMCMC, niter = niter, nburnin = burnin, 
-                       thin = nthin, nchains = 2,inits = inits, setSeed = c(777, 1234))
+                       thin = nthin, nchains = 3, inits = inits, setSeed = c(777, 1234, 555))
   )
   
   save(samples, file = paste0(resDir, "/otter_Mt_", year, ".Rdata"))
