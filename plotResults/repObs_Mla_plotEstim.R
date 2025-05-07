@@ -5,7 +5,7 @@ library(cowplot)
 
 # ------ Data ------ ----
 
-biasSummary <- read.csv("./results/AllModels_AllResults.csv") %>% 
+biasSummary <- read.csv("./results/repObs_AllModels_AllResults.csv") %>% 
   mutate(Convergence = (N_Rhat<= 1.1)) %>%
   mutate(Convergence = case_when(Convergence & N_n.eff >= 500 ~ 0,
                                  Convergence & N_n.eff < 500 ~ 1,
@@ -147,6 +147,6 @@ pGrid <- plot_grid(NULL, NULL, modGrid, NULL,
 
 plot(pGrid)
 
-cairo_pdf("./figures/allModels_N500EstimGreek.pdf", family="DejaVu Sans")
+cairo_pdf("./figures/allModels_N500Estim.pdf", family="DejaVu Sans")
 plot(pGrid)
 dev.off()
