@@ -19,6 +19,10 @@ resDir <- paste0("./results/otter_LMM2")
 if(!file.exists(resDir)) dir.create(resDir, recursive = TRUE)
 
 
+burnin <- 1000
+nthin <- 1
+niter <- 10000+burnin
+
 
 for(year in c("06", "07", "08", "10", "11", "12")){
   
@@ -26,7 +30,7 @@ for(year in c("06", "07", "08", "10", "11", "12")){
   
   dta_observed <- table(otterYear$OtterID, otterYear$CollectionDate) %>% 
     matrix(ncol = 5)
-
+  
   # ------- Data ------ ----
   
   # MATRIX OF OBSERVED HISTORIES WITH SPACE FOR OTHER INDIV
@@ -54,23 +58,34 @@ for(year in c("06", "07", "08", "10", "11", "12")){
     latIdx2 <- tmp$latIdx
   }
   
+  # DIFFERENT INITIALIZATION 
+  latObs3 <- latentObservation
+  errIndiv3 <- errIndiv
+  latIdx3 <- latentIndex
+  for(j in 1:5){
+    tmp <- addError(latObs3, errIndiv3, latIdx3, S)
+    latObs3 <- tmp$latObs
+    errIndiv3 <- tmp$errIndiv
+    latIdx3 <- tmp$latIdx
+  }
+  
   # ------- Constructing nimble model ------ ----
   
   LMM2_Consts <- list(S = S, n = n)
   
   # Initialisation
   LMM2_Inits <- function(i) list(lambda = runif(S, 0.2, 0.8),
-                                 alpha = runif(2, 0.6, 1)[i],
-                                 N = c(sum(latentIndex>0), sum(latIdx2>0))[i],
-                                 d = c(unseen_init, sum(latIdx2 == 1))[i],
-                                 latentObservation = list(latentObservation, latObs2)[[i]],
-                                 errIndiv = list(errIndiv, errIndiv2)[[i]],
-                                 latentIndex = list(latentIndex, latIdx2)[[i]]
-                                 )
+                                 alpha = runif(1, 0.6, 1),
+                                 N = c(sum(latentIndex>0), sum(latIdx2>0), sum(latIdx3>0))[i],
+                                 d = c(unseen_init, sum(latIdx2 == 1), sum(latIdx3 == 1))[i],
+                                 latentObservation = list(latentObservation, latObs2, latObs3)[[i]],
+                                 errIndiv = list(errIndiv, errIndiv2, errIndiv3)[[i]],
+                                 latentIndex = list(latentIndex, latIdx2, latIdx3)[[i]]
+  )
   
   LMM2_Model <- nimbleModel(code = LMM2_Code, name = "LMM2", 
-                              constants = LMM2_Consts,
-                              data = list(), inits = LMM2_Inits(1))
+                            constants = LMM2_Consts,
+                            data = list(), inits = LMM2_Inits(1))
   LMM2_Model$getLogProb("latentObservation")
   
   # Compilation modèle OK
@@ -83,18 +98,18 @@ for(year in c("06", "07", "08", "10", "11", "12")){
   LMM2_Conf <- configureMCMC(LMM2_Model,
                              monitors = c("N", "D", "nbErrTot", "lambda", 
                                           "alpha"), 
-                             thin = 1, thin2 = 5, 
+                             thin = 1, 
                              print = TRUE)
-   
+  
   LMM2_Conf$removeSampler("lambda", "alpha", "N")
   LMM2_Conf$addSampler(target = "alpha", type = nimUpdateAlpha, 
                        control = list(prior = c(1, 1)))
   LMM2_Conf$addSampler(target = paste0("lambda[1:",S,"]"), type = nimUpdateLambda, 
                        control = list(priora = rep(1, S), priorb = 1))
   LMM2_Conf$addSampler(target = c("latentObservation"), type = nimSamplerXmove,
-                         control = list(n = n, D = 1))
+                       control = list(n = n, D = 1))
   LMM2_Conf$addSampler(target = c("latentObservation"), type = nimSamplerX0,
-                         control = list(D = 5))
+                       control = list(D = 5))
   LMM2_Conf$printSamplers()
   
   
@@ -102,19 +117,15 @@ for(year in c("06", "07", "08", "10", "11", "12")){
   LMM2_MCMC <- buildMCMC(LMM2_Conf)
   
   CLMM2_MCMC <- compileNimble(LMM2_MCMC, project = LMM2_Model,
-                                showCompilerOutput = F, resetFunctions = T)
+                              showCompilerOutput = F, resetFunctions = T)
   
   
   # ------- run MCMC ------ ----
   
-  inits <- list(LMM2_Inits(1), LMM2_Inits(2))
+  inits <- list(LMM2_Inits(1), LMM2_Inits(2), LMM2_Inits(3))
   
-  burnin <- 1000
-  nthin <- 10
-  niter <- 10000+burnin
-
   samples <- runMCMC(CLMM2_MCMC, niter = niter, nburnin = burnin, 
-                     thin = nthin, thin2 = 5,  nchains = 2,inits = inits, setSeed = c(777, 1234))
+                     thin = nthin, nchains = 3,inits = inits, setSeed = c(777, 1234, 555))
   
   
   save(samples, file = paste0(resDir, "/otter_LMM2_", year, ".Rdata"))

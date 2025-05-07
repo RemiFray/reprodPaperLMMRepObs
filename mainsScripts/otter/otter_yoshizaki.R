@@ -17,7 +17,7 @@ if(!file.exists(resDir)) dir.create(resDir, recursive = TRUE)
 
 
 for(year in c("06", "07", "08", "10", "11", "12")){
-
+  
   otterYear <- otter[grep(paste0("[0-9]+/[0-9]+/", year), otter$CollectionDate), ]
   
   dta_observed <- table(otterYear$OtterID, otterYear$CollectionDate) %>% 
@@ -58,16 +58,16 @@ for(year in c("06", "07", "08", "10", "11", "12")){
                          latentObservation = latentObservation,
                          latentIndex = latentIndex)
   
-  noSingleInits <- function() list(capture = rep(0.6, S))
+  noSingleInits <- function() list(capture = rep(runif(1, 0.5, 0.9), S))
   
   
   samples <- nimbleMCMC(code = noSingleCode, constants = noSingleConsts,
                         data = list(x = xInit), inits = noSingleInits(),
-                        nchains = 2, niter = 10000, nburnin = 1000,
+                        nchains = 3, niter = 10000, nburnin = 1000,
                         summary = FALSE, WAIC = FALSE, 
                         monitors = c('N','capture'))
   
   save(samples, file = paste0(resDir, "/otter_", year, ".Rdata"))
-
-
+  
+  
 }
