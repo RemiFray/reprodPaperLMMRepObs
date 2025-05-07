@@ -1,4 +1,4 @@
-# Estimating population size with repeated observations of non-invasive sampling in presence of misidentification
+# Estimating population size simultaneous non-invasive sampling of the same individual liable to misidentification
 
 This repository contains all the material needed to reproduce the results from the paper.
 The instructions are given below.
@@ -20,12 +20,12 @@ The otter data from the study *Non-Invasive Genetic Mark-Recapture as a Means to
 
 The scripts used to run the models are in the folder "**mainScripts**". There are two sub-folders for:
 
-* the simulation study with repeated observation (simulations by the model $M_{\lambda, \alpha}$), 
+* the simulation study with simultaneous observations (simulations by the model $M_{\lambda, \alpha}$), 
+  * the Mla_pop30 is the script for the study in the supplementary material 
+  * the others are for the main study
 * the otter study.
 
 Most of the time, there is one script for one model and one number of occasion. For efficiency reasons, we ran each script divided in three (cheap parallelisation) but we regrouped them in here for clarity. The ones that were not regrouped are because the MCMC was not ran on the same number of iteration.  
-
-Sometimes an unknown error would occur and the script stop running on the cluster it was on. We have no idea why and what the errors were. **Simply restarting the scripts from where it crashed was enough** (with seeds reproducing the 'randomness'). I believe it is due to a bad interaction between NIMBLE and the cluster. If you experience such a thing, try restarting the script from where it stopped.
 
 The scripts will save the markov chains in the result folder.
 
