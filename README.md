@@ -1,5 +1,7 @@
 # Estimating population size simultaneous non-invasive sampling of the same individual liable to misidentification
 
+[Paper DOI](https://doi.org/10.1101/2024.06.12.598605)
+
 This repository contains all the material needed to reproduce the results from the paper.
 The instructions are given below.
 
