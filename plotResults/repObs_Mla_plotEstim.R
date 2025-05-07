@@ -5,15 +5,17 @@ library(cowplot)
 
 # ------ Data ------ ----
 
-biasSummary <- read.csv("./results/repObs_AllModels_AllResults.csv") %>% 
-  mutate(Convergence = as.factor((N_Rhat<= 1.1) * 1)) %>% 
+biasSummary <- read.csv("./results/AllModels_AllResults.csv") %>% 
+  mutate(Convergence = (N_Rhat<= 1.1)) %>%
+  mutate(Convergence = case_when(Convergence & N_n.eff >= 500 ~ 0,
+                                 Convergence & N_n.eff < 500 ~ 1,
+                                 TRUE ~ 2) %>% as.factor) %>% 
   mutate(p = case_when(model == "Mt" ~ lambda-0.02,
                        model == "Yoshi" ~ lambda,
                        model == "LMM2" ~ lambda+0.02),
-         model = as.factor(model),
-         Convergence = fct_relevel(Convergence, "1", "0")) %>% 
+         model = as.factor(model)) %>% 
   mutate(model = fct_recode(model, "Yoshizaki's" = "Yoshi",
-                            "Mla" = "LMM2"))
+                            "M\u03bb\u03b1" = "LMM2"))
 biasSummaryMeans <- biasSummary %>% 
   group_by(model, p, alpha, S) %>% 
   summarise(N_estim = mean(N_mean),
@@ -72,12 +74,15 @@ for(s in unique(biasSummary$S)){
       geom_hline(aes(yintercept = 500), lty = "dashed", col = "grey") +
       # all points
       geom_point(data = biasSummaryTmp,
-                  aes(x=p, y=N_mean, shape = model, color = Convergence),
-                  alpha = 0.4) +
+                 aes(x=p, y=N_mean, shape = model, color = Convergence),
+                 alpha = 0.5) +
       # means of 95% interval limits
-      geom_errorbar(data = biasSummaryMeansTmp,
-                    aes(x=p, ymin=N_2.5, ymax=N_97.5, group = model), 
-                    col = "grey40", width = 0.008) +
+      # geom_errorbar(data = biasSummaryMeansTmp,
+      #               aes(x=p, ymin=N_2.5, ymax=N_97.5, group = model),
+      #               col = "grey40", width = 0.008) +
+      # geom_errorbar(data = biasSummaryTmp,
+      #               aes(x=p, ymin=N_2.5, ymax=N_97.5, group = model),
+      #               col = "grey40", width = 0.008) +
       # means
       geom_line(data = biasSummaryMeansTmp,
                 aes(x=p, y=N_estim, group = model), 
@@ -85,7 +90,7 @@ for(s in unique(biasSummary$S)){
       geom_point(data = biasSummaryMeansTmp,
                  aes(x=p, y=N_estim, shape = model)) +
       # theme
-      scale_color_manual(values = c("grey", "darkred")) +
+      scale_color_manual(values = c("grey", "lightblue", "darkred")) +
       scale_shape_manual(values=c(15:18))+
       myThemePdf +
       scale_x_continuous(minor_breaks = c(0.11, 0.23, 0.36, 0.51), 
@@ -142,9 +147,6 @@ pGrid <- plot_grid(NULL, NULL, modGrid, NULL,
 
 plot(pGrid)
 
-pdf(file=paste("./figures/repObs_allModels_N500Estim.pdf", sep=""), 
-    width = 7.8, height = 5.4,
-    onefile = TRUE)
-  plot(pGrid)
+cairo_pdf("./figures/allModels_N500EstimGreek.pdf", family="DejaVu Sans")
+plot(pGrid)
 dev.off()
-
